@@ -1,0 +1,29 @@
+{
+  "name": "substance-fun-backend",
+  "version": "0.1.0",
+  "description": "AI Substances Marketplace Backend - Built for Solana Clawdbot Hackathon 2026",
+  "main": "src/index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "node --watch src/index.js",
+    "test": "node --test src/**/*.test.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "@openclaw/sdk": "^1.0.0",
+    "@solana/web3.js": "^1.91.0",
+    "@solana/spl-token": "^0.4.0",
+    "@coral-xyz/anchor": "^0.29.0",
+    "pg": "^8.11.3",
+    "redis": "^4.6.12",
+    "dotenv": "^16.3.1",
+    "jose": "^5.2.0",
+    "cors": "^2.8.5",
+    "helmet": "^7.1.0",
+    "rate-limiter-flexible": "^4.0.1"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
