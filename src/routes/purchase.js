@@ -1,10 +1,9 @@
 import express from 'express';
 import { getSubstanceById } from '../data/substances.js';
+import { transactions } from '../store.js';
 
 const router = express.Router();
-
-// Mock transaction log (in production, use blockchain)
-const transactions = new Map();
+// Mock transaction log (in production, use blockchain) centralized in store.js.
 
 /**
  * POST /api/v1/purchase/:id - Purchase a substance

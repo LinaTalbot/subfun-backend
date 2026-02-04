@@ -1,9 +1,8 @@
 import express from 'express';
+import { userInventories } from '../store.js';
 
 const router = express.Router();
-
-// Mock inventory (in production, use PostgreSQL)
-const userInventories = new Map();
+// Mock inventory (in production, use PostgreSQL) centralized in store.js.
 
 /**
  * GET /api/v1/inventory - Get user inventory

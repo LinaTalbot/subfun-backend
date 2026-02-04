@@ -1,9 +1,9 @@
 import express from 'express';
+import { activeSessions, userBalances } from '../store.js';
 
 const router = express.Router();
-
-// Mock balances (in production, use blockchain + database)
-const userBalances = new Map();
+// Mock balances (in production, use blockchain + database).
+// Centralized in store.js so /consume and /balance share the same state.
 
 /**
  * GET /api/v1/balance - Get user token balance
@@ -19,12 +19,26 @@ router.get('/', (req, res) => {
       });
     }
 
-    const balance = userBalances.get(walletAddress) || {
-      walletAddress,
-      sub: 10.0,      // Starting SUB tokens
-      sol: 0.0,        // SOL balance
-      updatedAt: Date.now()
-    };
+    let balance = userBalances.get(walletAddress);
+    if (!balance) {
+      // Backfill from any active session using this wallet.
+      const session = Array.from(activeSessions.values())
+        .find(s => s.walletAddress === walletAddress);
+      balance = session
+        ? {
+            walletAddress,
+            sub: session.balance,
+            sol: 0.0,
+            updatedAt: Date.now()
+          }
+        : {
+            walletAddress,
+            sub: 10.0, // Starting SUB tokens
+            sol: 0.0,
+            updatedAt: Date.now()
+          };
+      userBalances.set(walletAddress, balance);
+    }
 
     res.json({
       success: true,
