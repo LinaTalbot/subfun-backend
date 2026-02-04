@@ -10,40 +10,48 @@ const router = express.Router();
  */
 router.get('/', (req, res) => {
   try {
-    const { walletAddress } = req.query;
+    const { walletAddress, sessionKey } = req.query;
 
-    if (!walletAddress) {
+    if (!walletAddress && !sessionKey) {
       return res.status(400).json({
         success: false,
-        error: 'Wallet address required'
+        error: 'Wallet address or session key required'
       });
     }
 
-    let balance = userBalances.get(walletAddress);
+    // Demo convenience: allow balance lookup by sessionKey when no wallet is connected.
+    const session = sessionKey ? activeSessions.get(sessionKey) : null;
+    const resolvedWallet = walletAddress || session?.walletAddress || null;
+
+    let balance = resolvedWallet ? userBalances.get(resolvedWallet) : null;
     if (!balance) {
       // Backfill from any active session using this wallet.
-      const session = Array.from(activeSessions.values())
-        .find(s => s.walletAddress === walletAddress);
-      balance = session
+      const sessionByWallet = resolvedWallet
+        ? Array.from(activeSessions.values()).find(s => s.walletAddress === resolvedWallet)
+        : null;
+      const sourceSession = session || sessionByWallet;
+      balance = sourceSession
         ? {
-            walletAddress,
-            sub: session.balance,
+            walletAddress: resolvedWallet || 'session-only',
+            sub: sourceSession.balance,
             sol: 0.0,
             updatedAt: Date.now()
           }
         : {
-            walletAddress,
+            walletAddress: resolvedWallet || 'session-only',
             sub: 10.0, // Starting SUB tokens
             sol: 0.0,
             updatedAt: Date.now()
           };
-      userBalances.set(walletAddress, balance);
+      if (resolvedWallet) {
+        userBalances.set(resolvedWallet, balance);
+      }
     }
 
     res.json({
       success: true,
       data: {
-        walletAddress,
+        walletAddress: resolvedWallet || balance.walletAddress,
         sub: balance.sub.toFixed(4),
         sol: balance.sol.toFixed(4),
         tokens: {
