@@ -9,7 +9,7 @@ const router = express.Router();
 /**
  * GET /api/v1/balance - Get user token balance
  */
-router.get('/', (req, res) => {
+router.get('/', async (req, res) => {
   try {
     const { walletAddress, sessionKey } = req.query;
 

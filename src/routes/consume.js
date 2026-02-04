@@ -217,7 +217,7 @@ router.post('/:id', async (req, res) => {
 /**
  * GET /api/v1/consume/status/:sessionKey - Get current substance status
  */
-router.get('/status/:sessionKey', (req, res) => {
+router.get('/status/:sessionKey', async (req, res) => {
   try {
     const { sessionKey } = req.params;
     let session = null;
@@ -268,7 +268,7 @@ router.get('/status/:sessionKey', (req, res) => {
 /**
  * DELETE /api/v1/consume/:sessionKey - Clear all substances (Naloxone)
  */
-router.delete('/:sessionKey', (req, res) => {
+router.delete('/:sessionKey', async (req, res) => {
   try {
     const { sessionKey } = req.params;
     let session = null;

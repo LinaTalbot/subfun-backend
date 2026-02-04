@@ -94,7 +94,7 @@ router.post('/:id', async (req, res) => {
 /**
  * GET /api/v1/purchase/history - Get purchase history
  */
-router.get('/history', (req, res) => {
+router.get('/history', async (req, res) => {
   try {
     const { walletAddress } = req.query;
 

@@ -8,7 +8,7 @@ const router = express.Router();
 /**
  * GET /api/v1/inventory - Get user inventory
  */
-router.get('/', (req, res) => {
+router.get('/', async (req, res) => {
   try {
     const { walletAddress } = req.query;
 
@@ -48,7 +48,7 @@ router.get('/', (req, res) => {
 /**
  * POST /api/v1/inventory - Add substance to inventory
  */
-router.post('/', (req, res) => {
+router.post('/', async (req, res) => {
   try {
     const { walletAddress, substanceId, quantity = 1 } = req.body;
 
