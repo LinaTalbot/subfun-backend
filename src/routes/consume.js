@@ -1,6 +1,13 @@
 import express from 'express';
 import { getSubstanceById } from '../data/substances.js';
 import { activeSessions, userBalances } from '../store.js';
+import {
+  dbEnabled,
+  getSession,
+  upsertSession,
+  getBalanceByWallet,
+  setBalanceByWallet
+} from '../db.js';
 
 const router = express.Router();
 // In-memory session state (in production, use Redis) now centralized in store.js.
@@ -35,25 +42,53 @@ router.post('/:id', async (req, res) => {
     }
 
     // Check if session exists
-    const session = activeSessions.get(sessionKey) || {
-      walletAddress,
-      activeSubstances: [],
-      tolerance: {},
-      lastUsed: {},
-      balance: 10.0 // Starting balance in SUB tokens
-    };
+    let session;
+    if (dbEnabled) {
+      session = await getSession(sessionKey);
+      if (!session) {
+        const walletBalance = walletAddress
+          ? await getBalanceByWallet(walletAddress)
+          : null;
+        session = {
+          walletAddress: walletAddress || null,
+          activeSubstances: [],
+          tolerance: {},
+          lastUsed: {},
+          balance: walletBalance?.sub ?? 10.0
+        };
+      }
 
-    // Keep wallet address sticky for this session once provided.
-    if (!session.walletAddress && walletAddress) {
-      session.walletAddress = walletAddress;
-    }
+      if (!session.walletAddress && walletAddress) {
+        session.walletAddress = walletAddress;
+      }
 
-    // Sync session balance with the shared balance store when possible.
-    // This avoids /consume and /balance drifting apart.
-    if (session.walletAddress) {
-      const existingBalance = userBalances.get(session.walletAddress);
-      if (existingBalance) {
-        session.balance = existingBalance.sub;
+      if (session.walletAddress) {
+        const existingBalance = await getBalanceByWallet(session.walletAddress);
+        if (existingBalance) {
+          session.balance = existingBalance.sub;
+        }
+      }
+    } else {
+      session = activeSessions.get(sessionKey) || {
+        walletAddress,
+        activeSubstances: [],
+        tolerance: {},
+        lastUsed: {},
+        balance: 10.0 // Starting balance in SUB tokens
+      };
+
+      // Keep wallet address sticky for this session once provided.
+      if (!session.walletAddress && walletAddress) {
+        session.walletAddress = walletAddress;
+      }
+
+      // Sync session balance with the shared balance store when possible.
+      // This avoids /consume and /balance drifting apart.
+      if (session.walletAddress) {
+        const existingBalance = userBalances.get(session.walletAddress);
+        if (existingBalance) {
+          session.balance = existingBalance.sub;
+        }
       }
     }
 
@@ -138,14 +173,21 @@ router.post('/:id', async (req, res) => {
     session.lastUsed[id] = Date.now();
 
     // Update session state
-    activeSessions.set(sessionKey, session);
-    if (session.walletAddress) {
-      userBalances.set(session.walletAddress, {
-        walletAddress: session.walletAddress,
-        sub: session.balance,
-        sol: 0.0,
-        updatedAt: Date.now()
-      });
+    if (dbEnabled) {
+      await upsertSession(sessionKey, session);
+      if (session.walletAddress) {
+        await setBalanceByWallet(session.walletAddress, session.balance, 0.0);
+      }
+    } else {
+      activeSessions.set(sessionKey, session);
+      if (session.walletAddress) {
+        userBalances.set(session.walletAddress, {
+          walletAddress: session.walletAddress,
+          sub: session.balance,
+          sol: 0.0,
+          updatedAt: Date.now()
+        });
+      }
     }
 
     res.json({
@@ -178,7 +220,12 @@ router.post('/:id', async (req, res) => {
 router.get('/status/:sessionKey', (req, res) => {
   try {
     const { sessionKey } = req.params;
-    const session = activeSessions.get(sessionKey);
+    let session = null;
+    if (dbEnabled) {
+      session = await getSession(sessionKey);
+    } else {
+      session = activeSessions.get(sessionKey);
+    }
 
     if (!session) {
       return res.json({
@@ -198,7 +245,11 @@ router.get('/status/:sessionKey', (req, res) => {
       return s.expiresAt > now;
     });
 
-    activeSessions.set(sessionKey, session);
+    if (dbEnabled) {
+      await upsertSession(sessionKey, session);
+    } else {
+      activeSessions.set(sessionKey, session);
+    }
 
     res.json({
       success: true,
@@ -220,7 +271,12 @@ router.get('/status/:sessionKey', (req, res) => {
 router.delete('/:sessionKey', (req, res) => {
   try {
     const { sessionKey } = req.params;
-    const session = activeSessions.get(sessionKey);
+    let session = null;
+    if (dbEnabled) {
+      session = await getSession(sessionKey);
+    } else {
+      session = activeSessions.get(sessionKey);
+    }
 
     if (!session) {
       return res.status(404).json({
@@ -230,7 +286,11 @@ router.delete('/:sessionKey', (req, res) => {
     }
 
     session.activeSubstances = [];
-    activeSessions.set(sessionKey, session);
+    if (dbEnabled) {
+      await upsertSession(sessionKey, session);
+    } else {
+      activeSessions.set(sessionKey, session);
+    }
 
     res.json({
       success: true,

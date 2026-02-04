@@ -8,12 +8,17 @@ import inventoryRoutes from './routes/inventory.js';
 import purchaseRoutes from './routes/purchase.js';
 import consumeRoutes from './routes/consume.js';
 import balanceRoutes from './routes/balance.js';
+import { ensureTables } from './db.js';
 
 // Load environment variables
 dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+// Ensure demo tables exist when DATABASE_URL is configured.
+// This keeps the demo working without separate migrations.
+await ensureTables();
 
 // Middleware
 app.use(helmet({

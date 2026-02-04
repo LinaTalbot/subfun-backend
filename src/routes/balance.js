@@ -1,5 +1,6 @@
 import express from 'express';
 import { activeSessions, userBalances } from '../store.js';
+import { dbEnabled, getSession, getBalanceByWallet, setBalanceByWallet } from '../db.js';
 
 const router = express.Router();
 // Mock balances (in production, use blockchain + database).
@@ -20,15 +21,24 @@ router.get('/', (req, res) => {
     }
 
     // Demo convenience: allow balance lookup by sessionKey when no wallet is connected.
-    const session = sessionKey ? activeSessions.get(sessionKey) : null;
+    const session = sessionKey
+      ? (dbEnabled ? await getSession(sessionKey) : activeSessions.get(sessionKey))
+      : null;
     const resolvedWallet = walletAddress || session?.walletAddress || null;
 
-    let balance = resolvedWallet ? userBalances.get(resolvedWallet) : null;
+    let balance = null;
+    if (dbEnabled && resolvedWallet) {
+      balance = await getBalanceByWallet(resolvedWallet);
+    } else if (resolvedWallet) {
+      balance = userBalances.get(resolvedWallet);
+    }
     if (!balance) {
       // Backfill from any active session using this wallet.
-      const sessionByWallet = resolvedWallet
-        ? Array.from(activeSessions.values()).find(s => s.walletAddress === resolvedWallet)
-        : null;
+      const sessionByWallet = dbEnabled
+        ? null
+        : (resolvedWallet
+            ? Array.from(activeSessions.values()).find(s => s.walletAddress === resolvedWallet)
+            : null);
       const sourceSession = session || sessionByWallet;
       balance = sourceSession
         ? {
@@ -44,7 +54,11 @@ router.get('/', (req, res) => {
             updatedAt: Date.now()
           };
       if (resolvedWallet) {
-        userBalances.set(resolvedWallet, balance);
+        if (dbEnabled) {
+          await setBalanceByWallet(resolvedWallet, balance.sub, balance.sol);
+        } else {
+          userBalances.set(resolvedWallet, balance);
+        }
       }
     }
 

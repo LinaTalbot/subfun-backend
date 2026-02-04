@@ -188,6 +188,11 @@ npm run dev
 npm start
 ```
 
+### Persistence (Demo)
+If `DATABASE_URL` is set, the server will auto-create demo tables on startup
+and persist sessions, balances, inventory, and transactions in Postgres.
+This keeps the demo state across restarts without running migrations.
+
 > Note: `@openclaw/sdk` is optional for this demo deployment. It can require
 > authentication in some registries, so it is listed under `optionalDependencies`
 > to prevent installs from failing in public CI/CD builds. Install it explicitly

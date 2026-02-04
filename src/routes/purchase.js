@@ -1,6 +1,7 @@
 import express from 'express';
 import { getSubstanceById } from '../data/substances.js';
 import { transactions } from '../store.js';
+import { dbEnabled, addTransaction, getTransactionsByWallet } from '../db.js';
 
 const router = express.Router();
 // Mock transaction log (in production, use blockchain) centralized in store.js.
@@ -56,7 +57,19 @@ router.post('/:id', async (req, res) => {
       status: 'confirmed'
     };
 
-    transactions.set(txId, transaction);
+    if (dbEnabled) {
+      await addTransaction({
+        id: txId,
+        walletAddress,
+        substanceId: id,
+        amount: finalPrice,
+        currency: 'SOL',
+        persistent,
+        status: 'confirmed'
+      });
+    } else {
+      transactions.set(txId, transaction);
+    }
 
     res.json({
       success: true,
@@ -92,9 +105,11 @@ router.get('/history', (req, res) => {
       });
     }
 
-    const userTransactions = Array.from(transactions.values())
-      .filter(tx => tx.walletAddress === walletAddress)
-      .sort((a, b) => b.createdAt - a.createdAt);
+    const userTransactions = dbEnabled
+      ? await getTransactionsByWallet(walletAddress)
+      : Array.from(transactions.values())
+          .filter(tx => tx.walletAddress === walletAddress)
+          .sort((a, b) => b.createdAt - a.createdAt);
 
     res.json({
       success: true,

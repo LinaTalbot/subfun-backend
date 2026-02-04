@@ -1,5 +1,6 @@
 import express from 'express';
 import { userInventories } from '../store.js';
+import { dbEnabled, getInventoryByWallet, addInventoryItem } from '../db.js';
 
 const router = express.Router();
 // Mock inventory (in production, use PostgreSQL) centralized in store.js.
@@ -18,11 +19,21 @@ router.get('/', (req, res) => {
       });
     }
 
-    const inventory = userInventories.get(walletAddress) || {
-      walletAddress,
-      substances: [],
-      createdAt: Date.now()
-    };
+    let inventory;
+    if (dbEnabled) {
+      const substances = await getInventoryByWallet(walletAddress);
+      inventory = {
+        walletAddress,
+        substances,
+        createdAt: Date.now()
+      };
+    } else {
+      inventory = userInventories.get(walletAddress) || {
+        walletAddress,
+        substances: [],
+        createdAt: Date.now()
+      };
+    }
 
     res.json({
       success: true,
@@ -48,26 +59,37 @@ router.post('/', (req, res) => {
       });
     }
 
-    let inventory = userInventories.get(walletAddress) || {
-      walletAddress,
-      substances: [],
-      createdAt: Date.now()
-    };
-
-    // Check if substance already in inventory
-    const existing = inventory.substances.find(s => s.substanceId === substanceId);
-    if (existing) {
-      existing.quantity += quantity;
-      existing.purchasedAt = Date.now();
+    let inventory;
+    if (dbEnabled) {
+      await addInventoryItem(walletAddress, substanceId, quantity);
+      const substances = await getInventoryByWallet(walletAddress);
+      inventory = {
+        walletAddress,
+        substances,
+        createdAt: Date.now()
+      };
     } else {
-      inventory.substances.push({
-        substanceId,
-        quantity,
-        purchasedAt: Date.now()
-      });
-    }
+      inventory = userInventories.get(walletAddress) || {
+        walletAddress,
+        substances: [],
+        createdAt: Date.now()
+      };
 
-    userInventories.set(walletAddress, inventory);
+      // Check if substance already in inventory
+      const existing = inventory.substances.find(s => s.substanceId === substanceId);
+      if (existing) {
+        existing.quantity += quantity;
+        existing.purchasedAt = Date.now();
+      } else {
+        inventory.substances.push({
+          substanceId,
+          quantity,
+          purchasedAt: Date.now()
+        });
+      }
+
+      userInventories.set(walletAddress, inventory);
+    }
 
     res.json({
       success: true,
