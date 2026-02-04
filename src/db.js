@@ -6,9 +6,12 @@ const connectionString = process.env.DATABASE_URL;
 export const dbEnabled = Boolean(connectionString);
 
 const useInsecureSsl = dbEnabled && /supabase\.co/.test(connectionString);
+const sanitizedConnectionString = dbEnabled && useInsecureSsl
+  ? connectionString.replace(/([?&])sslmode=[^&]+&?/, '$1').replace(/[?&]$/, '')
+  : connectionString;
 const pool = dbEnabled
   ? new Pool({
-      connectionString,
+      connectionString: sanitizedConnectionString,
       // Supabase uses a managed cert chain; allow it in this demo environment.
       ssl: useInsecureSsl ? { rejectUnauthorized: false } : undefined
     })
