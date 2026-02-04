@@ -192,6 +192,8 @@ npm start
 If `DATABASE_URL` is set, the server will auto-create demo tables on startup
 and persist sessions, balances, inventory, and transactions in Postgres.
 This keeps the demo state across restarts without running migrations.
+When using Supabase, SSL is enabled with `rejectUnauthorized: false` for demo
+compatibility.
 
 > Note: `@openclaw/sdk` is optional for this demo deployment. It can require
 > authentication in some registries, so it is listed under `optionalDependencies`
