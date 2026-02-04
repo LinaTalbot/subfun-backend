@@ -188,6 +188,11 @@ npm run dev
 npm start
 ```
 
+> Note: `@openclaw/sdk` is optional for this demo deployment. It can require
+> authentication in some registries, so it is listed under `optionalDependencies`
+> to prevent installs from failing in public CI/CD builds. Install it explicitly
+> if you need OpenClaw integration.
+
 ### Production
 
 ```bash
